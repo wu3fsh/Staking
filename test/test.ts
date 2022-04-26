@@ -176,17 +176,17 @@ describe("Staking", function () {
   it("should get default settings", async function () {
     expect(await stakingContract.claimTimeout()).to.equal(600);
     expect(await stakingContract.unstakeTimeout()).to.equal(1200);
-    expect(await stakingContract.rewardRate()).to.equal(5);
+    expect(await stakingContract.rewardPercentage()).to.equal(5);
   });
 
   it("should change settings", async function () {
     const rewardTimeoutSeconds = 11;
     const unstakeTimeoutSeconds = 12;
-    const rewardRate = 13;
-    await stakingContract.changeSettings(rewardTimeoutSeconds, unstakeTimeoutSeconds, rewardRate);
+    const rewardPercentage = 13;
+    await stakingContract.changeSettings(rewardTimeoutSeconds, unstakeTimeoutSeconds, rewardPercentage);
     expect(await stakingContract.claimTimeout()).to.equal(rewardTimeoutSeconds);
     expect(await stakingContract.unstakeTimeout()).to.equal(unstakeTimeoutSeconds);
-    expect(await stakingContract.rewardRate()).to.equal(rewardRate);
+    expect(await stakingContract.rewardPercentage()).to.equal(rewardPercentage);
   });
 
   it("Should throw an exception if a non-owner address tries to change staking settings", async function () {
@@ -195,15 +195,6 @@ describe("Staking", function () {
       ).to.throw();
     } catch (error: unknown) {
       expect(error instanceof Error ? error.message : "").to.have.string("Only the owner of the contract can perform this operation");
-    }
-  });
-
-  it("Should throw an exception if reward rate is 0", async function () {
-    try {
-      expect(await stakingContract.changeSettings(1, 1, 0)
-      ).to.throw();
-    } catch (error: unknown) {
-      expect(error instanceof Error ? error.message : "").to.have.string("Reward rate must be greater than 0");
     }
   });
 
@@ -238,11 +229,11 @@ describe("Staking", function () {
 
     const rewardTimeoutSeconds = 1;
     const unstakeTimeoutSeconds = 1;
-    const rewardRate = 2;
-    await stakingContract.changeSettings(rewardTimeoutSeconds, unstakeTimeoutSeconds, rewardRate);
+    const rewardPercentage = 2;
+    await stakingContract.changeSettings(rewardTimeoutSeconds, unstakeTimeoutSeconds, rewardPercentage);
     expect(await stakingContract.claimTimeout()).to.equal(rewardTimeoutSeconds);
     expect(await stakingContract.unstakeTimeout()).to.equal(unstakeTimeoutSeconds);
-    expect(await stakingContract.rewardRate()).to.equal(rewardRate);
+    expect(await stakingContract.rewardPercentage()).to.equal(rewardPercentage);
 
     expect(await stakingContract.getStakingAmount(owner.getAddress())).to.equal(0);
     expect(await stakingContract.getStakingTimestamp(owner.getAddress())).to.equal(0);
@@ -288,11 +279,11 @@ describe("Staking", function () {
 
       const rewardTimeoutSeconds = 1;
       const unstakeTimeoutSeconds = 1000;
-      const rewardRate = 2;
-      await stakingContract.changeSettings(rewardTimeoutSeconds, unstakeTimeoutSeconds, rewardRate);
+      const rewardPercentage = 2;
+      await stakingContract.changeSettings(rewardTimeoutSeconds, unstakeTimeoutSeconds, rewardPercentage);
       expect(await stakingContract.claimTimeout()).to.equal(rewardTimeoutSeconds);
       expect(await stakingContract.unstakeTimeout()).to.equal(unstakeTimeoutSeconds);
-      expect(await stakingContract.rewardRate()).to.equal(rewardRate);
+      expect(await stakingContract.rewardPercentage()).to.equal(rewardPercentage);
 
       expect(await stakingContract.unstake()
       ).to.throw();
@@ -313,11 +304,11 @@ describe("Staking", function () {
 
     const rewardTimeoutSeconds = 1;
     const unstakeTimeoutSeconds = 1;
-    const rewardRate = 2;
-    await stakingContract.changeSettings(rewardTimeoutSeconds, unstakeTimeoutSeconds, rewardRate);
+    const rewardPercentage = 20;
+    await stakingContract.changeSettings(rewardTimeoutSeconds, unstakeTimeoutSeconds, rewardPercentage);
     expect(await stakingContract.claimTimeout()).to.equal(rewardTimeoutSeconds);
     expect(await stakingContract.unstakeTimeout()).to.equal(unstakeTimeoutSeconds);
-    expect(await stakingContract.rewardRate()).to.equal(rewardRate);
+    expect(await stakingContract.rewardPercentage()).to.equal(rewardPercentage);
 
     expect(await stakingContract.getStakingAmount(owner.getAddress())).to.equal(0);
     expect(await stakingContract.getStakingTimestamp(owner.getAddress())).to.equal(0);
@@ -332,9 +323,19 @@ describe("Staking", function () {
 
     await stakingContract.claim();
 
-    expect(await rewardsToken.balanceOf(from)).to.equal(rewardTokenBalance - lpTokensAmount / rewardRate);
-    expect(await rewardsToken.balanceOf(to)).to.equal(lpTokensAmount / rewardRate);
-    expect(await stakingContract.getStakingTimestamp(owner.getAddress())).to.equal(0);
+    console.log('rewardTokenBalance', rewardTokenBalance);
+    let reward = 1 * lpTokensAmount * rewardPercentage / 100;
+
+    expect(await rewardsToken.balanceOf(from)).to.equal(rewardTokenBalance - reward);
+    expect(await rewardsToken.balanceOf(to)).to.equal(reward);
+
+    await delay(1000);
+
+    reward = 2 * lpTokensAmount * rewardPercentage / 100;
+    await stakingContract.claim();
+
+    expect(await rewardsToken.balanceOf(from)).to.equal(rewardTokenBalance - reward);
+    expect(await rewardsToken.balanceOf(to)).to.equal(reward);
   });
 
   it("Should throw an exception if nothing to claim", async function () {
@@ -359,11 +360,11 @@ describe("Staking", function () {
 
       const rewardTimeoutSeconds = 1;
       const unstakeTimeoutSeconds = 1;
-      const rewardRate = 2;
-      await stakingContract.changeSettings(rewardTimeoutSeconds, unstakeTimeoutSeconds, rewardRate);
+      const rewardPercentage = 2;
+      await stakingContract.changeSettings(rewardTimeoutSeconds, unstakeTimeoutSeconds, rewardPercentage);
       expect(await stakingContract.claimTimeout()).to.equal(rewardTimeoutSeconds);
       expect(await stakingContract.unstakeTimeout()).to.equal(unstakeTimeoutSeconds);
-      expect(await stakingContract.rewardRate()).to.equal(rewardRate);
+      expect(await stakingContract.rewardPercentage()).to.equal(rewardPercentage);
       expect(await stakingContract.getStakingAmount(owner.getAddress())).to.equal(0);
       expect(await stakingContract.getStakingTimestamp(owner.getAddress())).not.to.equal(0);
       expect(await stakingContract.claim()
@@ -386,11 +387,11 @@ describe("Staking", function () {
 
       const rewardTimeoutSeconds = 10000;
       const unstakeTimeoutSeconds = 1;
-      const rewardRate = 2;
-      await stakingContract.changeSettings(rewardTimeoutSeconds, unstakeTimeoutSeconds, rewardRate);
+      const rewardPercentage = 2;
+      await stakingContract.changeSettings(rewardTimeoutSeconds, unstakeTimeoutSeconds, rewardPercentage);
       expect(await stakingContract.claimTimeout()).to.equal(rewardTimeoutSeconds);
       expect(await stakingContract.unstakeTimeout()).to.equal(unstakeTimeoutSeconds);
-      expect(await stakingContract.rewardRate()).to.equal(rewardRate);
+      expect(await stakingContract.rewardPercentage()).to.equal(rewardPercentage);
       expect(await stakingContract.getStakingAmount(owner.getAddress())).to.equal(1);
       expect(await stakingContract.getStakingTimestamp(owner.getAddress())).not.to.equal(0);
       expect(await stakingContract.claim()
@@ -400,3 +401,7 @@ describe("Staking", function () {
     }
   });
 });
+
+function delay(milliseconds: number) {
+  return new Promise(resolve => setTimeout(resolve, milliseconds));
+}

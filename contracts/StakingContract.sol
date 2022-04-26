@@ -9,7 +9,7 @@ contract StakingContract {
     mapping(address => uint256) private _stakingTimestamps;
     uint256 private _rewardTimeoutSeconds = 600;
     uint256 private _unstakeTimeoutSeconds = 1200;
-    uint256 private _rewardRate = 5;
+    uint256 private _rewardPercentage = 5;
     address private _owner;
 
     modifier restricted() {
@@ -34,19 +34,18 @@ contract StakingContract {
         return _unstakeTimeoutSeconds;
     }
 
-    function rewardRate() public view returns (uint256) {
-        return _rewardRate;
+    function rewardPercentage() public view returns (uint256) {
+        return _rewardPercentage;
     }
 
     function changeSettings(
         uint256 rewardTimeoutSeconds,
         uint256 unstakeTimeoutSeconds,
-        uint256 rewardRate
+        uint256 rewardPercentage
     ) external restricted {
-        require(rewardRate > 0, "Reward rate must be greater than 0");
         _rewardTimeoutSeconds = rewardTimeoutSeconds;
         _unstakeTimeoutSeconds = unstakeTimeoutSeconds;
-        _rewardRate = rewardRate;
+        _rewardPercentage = rewardPercentage;
     }
 
     function stake(uint256 amount) external {
@@ -71,12 +70,19 @@ contract StakingContract {
         uint256 stakingTimestamp = _stakingTimestamps[msg.sender];
         uint256 amount = _stakingAmounts[msg.sender];
         require(stakingTimestamp > 0 && amount > 0, "Nothing to claim");
+        uint256 now = block.timestamp;
         require(
-            stakingTimestamp + (_rewardTimeoutSeconds) <= block.timestamp,
+            stakingTimestamp + (_rewardTimeoutSeconds) <= now,
             "Reward timeout has not expired yet"
         );
-        _rewardsToken.transfer(msg.sender, amount / _rewardRate);
-        _stakingTimestamps[msg.sender] = 0;
+        uint256 diffTime = now - stakingTimestamp;
+        uint256 timeRate = _rewardTimeoutSeconds == 0
+            ? diffTime
+            : diffTime / _rewardTimeoutSeconds;
+        uint256 reward = (timeRate * amount * _rewardPercentage) / 100;
+
+        _rewardsToken.transfer(msg.sender, reward);
+        _stakingTimestamps[msg.sender] = now;
     }
 
     function unstake() external {
